@@ -12,13 +12,13 @@ const MOBILES_RE = /iPhone|iPad|iPod|Android|Windows Phone|BlackBerry|Opera Mini
 // Bot classification patterns
 const BOT_CATEGORIES = {
   // AI/LLM Bots
-  ai_llm: /GPTBot|ChatGPT|Claude-Web|ClaudeBot|Google-Extended|CCBot|anthropic-ai|OpenAI|Perplexity|AI2Bot|Meta-ExternalAgent|Bytespider|Claude|Bard|Amazonbot|OAI-SearchBot|ChatGPT-User|LinkupBot|DuckAssistBot/i,
+  ai_llm: /GPTBot|ChatGPT|Claude-Web|ClaudeBot|Google-Extended|CCBot|anthropic-ai|OpenAI|Perplexity|AI2Bot|Meta-ExternalAgent|Bytespider|Claude|Bard|Amazonbot|OAI-SearchBot|ChatGPT-User|LinkupBot|DuckAssistBot|LinerBot|newsai/i,
 
   // Search Engine Crawlers
-  search_engines: /Googlebot|bingbot|Baiduspider|YandexBot|DuckDuckBot|Yahoo! Slurp|Slurp|Sogou|Exabot|facebookexternalhit|Applebot/i,
+  search_engines: /Googlebot|bingbot|Baiduspider|YandexBot|DuckDuckBot|Yahoo! Slurp|Slurp|Sogou|Exabot|facebookexternalhit|Applebot|PetalBot|Qwantbot|SeznamBot/i,
 
   // SEO/Marketing Bots
-  seo_marketing: /AhrefsBot|SemrushBot|MJ12bot|DotBot|BLEXBot|SiteAuditBot|LinkpadBot|BrandVerity|DataForSeoBot/i,
+  seo_marketing: /AhrefsBot|SemrushBot|MJ12bot|DotBot|BLEXBot|SiteAuditBot|LinkpadBot|BrandVerity|DataForSeoBot|SERankingBacklinksBot/i,
 
   // Social Media Bots
   social_media: /facebookexternalhit|Twitterbot|LinkedInBot|Pinterest|WhatsApp|Slack|Discord|Telegram|SkypeUriPreview|TelegramBot/i,
