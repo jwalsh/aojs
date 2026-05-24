@@ -1,6 +1,6 @@
-import { describe, it } from 'node:test';
+import { describe, it, test } from 'node:test';
 import assert from 'node:assert';
-import ao from '../dist/index.js';
+import ao, { detectBotCategory } from '../dist/index.js';
 
 describe('aojs - Device Detection', () => {
   describe('Mobile Detection', () => {
@@ -204,5 +204,43 @@ describe('aojs - Device Detection', () => {
       assert.strictEqual(analysis.botCategory, 'ai_llm');
       assert(analysis.botCategories.includes('ai_llm'));
     });
+  });
+});
+
+describe('Bot Classification Fixes', () => {
+  // Amazonbot should be ai_llm, not ecommerce
+  test('classifies Amazonbot as ai_llm', () => {
+    const result = detectBotCategory('Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Amazonbot/0.1; +https://developer.amazon.com/support/amazonbot)');
+    assert.strictEqual(result.primaryCategory, 'ai_llm');
+  });
+
+  // Applebot should be search_engines, not social_media
+  test('classifies Applebot as search_engines', () => {
+    const result = detectBotCategory('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15 (Applebot/0.1)');
+    assert.strictEqual(result.primaryCategory, 'search_engines');
+  });
+
+  // Walsh-Research should be research_crawlers
+  test('classifies Walsh-Research as research_crawlers', () => {
+    const result = detectBotCategory('Mozilla/5.0 (compatible; Walsh-Research/1.1; +https://wal.sh/bot/)');
+    assert.strictEqual(result.primaryCategory, 'research_crawlers');
+  });
+
+  // LinkupBot should be ai_llm
+  test('classifies LinkupBot as ai_llm', () => {
+    const result = detectBotCategory('LinkupBot/1.0 (LinkupBot for web indexing; https://linkup.so/bot)');
+    assert.strictEqual(result.primaryCategory, 'ai_llm');
+  });
+
+  // Monit should be monitoring
+  test('classifies Monit as monitoring', () => {
+    const result = detectBotCategory('Monit/5.35.2');
+    assert.strictEqual(result.primaryCategory, 'monitoring');
+  });
+
+  // DreamHost should be monitoring
+  test('classifies DreamHost as monitoring', () => {
+    const result = detectBotCategory('DreamHost Data Team (+http://www.dreamhost.com/support/)');
+    assert.strictEqual(result.primaryCategory, 'monitoring');
   });
 });

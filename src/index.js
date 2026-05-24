@@ -12,22 +12,22 @@ const MOBILES_RE = /iPhone|iPad|iPod|Android|Windows Phone|BlackBerry|Opera Mini
 // Bot classification patterns
 const BOT_CATEGORIES = {
   // AI/LLM Bots
-  ai_llm: /GPTBot|ChatGPT|Claude-Web|ClaudeBot|Google-Extended|CCBot|anthropic-ai|OpenAI|Perplexity|AI2Bot|Meta-ExternalAgent|Bytespider|Claude|Bard/i,
+  ai_llm: /GPTBot|ChatGPT|Claude-Web|ClaudeBot|Google-Extended|CCBot|anthropic-ai|OpenAI|Perplexity|AI2Bot|Meta-ExternalAgent|Bytespider|Claude|Bard|Amazonbot|OAI-SearchBot|ChatGPT-User|LinkupBot|DuckAssistBot/i,
 
   // Search Engine Crawlers
-  search_engines: /Googlebot|bingbot|Baiduspider|YandexBot|DuckDuckBot|Yahoo! Slurp|Slurp|Sogou|Exabot|facebookexternalhit/i,
+  search_engines: /Googlebot|bingbot|Baiduspider|YandexBot|DuckDuckBot|Yahoo! Slurp|Slurp|Sogou|Exabot|facebookexternalhit|Applebot/i,
 
   // SEO/Marketing Bots
   seo_marketing: /AhrefsBot|SemrushBot|MJ12bot|DotBot|BLEXBot|SiteAuditBot|LinkpadBot|BrandVerity|DataForSeoBot/i,
 
   // Social Media Bots
-  social_media: /facebookexternalhit|Twitterbot|LinkedInBot|Pinterest|WhatsApp|Slack|Discord|Telegram|SkypeUriPreview|Applebot|TelegramBot/i,
+  social_media: /facebookexternalhit|Twitterbot|LinkedInBot|Pinterest|WhatsApp|Slack|Discord|Telegram|SkypeUriPreview|TelegramBot/i,
 
   // Security/Research Bots
   security_research: /Shodan|Censys|ZoomBot|InternetMeasurement|ResearchScan|SecurityTracker|nuclei/i,
 
   // Monitoring/Uptime Bots
-  monitoring: /UptimeRobot|Pingdom|StatusCake|Site24x7|GTmetrix|WebPageTest|Uptimebot|Monitor|CheckBot/i,
+  monitoring: /UptimeRobot|Pingdom|StatusCake|Site24x7|GTmetrix|WebPageTest|Uptimebot|Monitor|CheckBot|Monit|DreamHost/i,
 
   // Archive/Backup Bots
   archive: /archive\.org|Wayback|Internet Archive|ArchiveBot|ia_archiver|Wayback Machine/i,
@@ -36,7 +36,10 @@ const BOT_CATEGORIES = {
   feed: /Feedfetcher-Google|FeedBurner|Feedly|RSS|FeedBot|PubSubHubbub|Superfeedr/i,
 
   // E-commerce/Price Bots
-  ecommerce: /ShopBot|PriceBot|Shopping|Amazon|Shopify|WooCommerce|PriceSpider|Priceonomics/i,
+  ecommerce: /ShopBot|PriceBot|Shopping|AmazonProductBot|Shopify|WooCommerce|PriceSpider|Priceonomics/i,
+
+  // Research Crawlers
+  research_crawlers: /Walsh-Research|tech-crawler/i,
 
   // Generic/Other Bots
   generic: /bot|crawler|spider|scraper|PhantomJS|HeadlessChrome|Selenium|curl|wget|HTTPie|Postman|python-requests|Go-http-client/i

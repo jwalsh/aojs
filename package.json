@@ -1,7 +1,7 @@
 {
-  "name": "aojs",
-  "description": "Autonomous Observability in JavaScript - Real-time monitoring and analysis for JavaScript applications",
-  "version": "0.2.0",
+  "name": "ao",
+  "description": "User-agent detection, bot classification, and compliance assessment",
+  "version": "1.0.0",
   "homepage": "https://github.com/jwalsh/aojs",
   "author": "jwalsh",
   "repository": {
@@ -13,6 +13,11 @@
   },
   "license": "MIT",
   "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./log-analyzer": "./dist/log-analyzer.js",
+    "./compliance": "./dist/compliance.js"
+  },
   "type": "module",
   "engines": {
     "node": ">=18.0.0"
