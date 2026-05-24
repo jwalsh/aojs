@@ -24,7 +24,7 @@
   },
   "scripts": {
     "build": "node build.js",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.js",
     "lint": "eslint src/ test/",
     "clean": "rm -rf dist/",
     "analyze": "node dist/log-analyzer.js"
