@@ -1,0 +1,287 @@
+#+TITLE: npm Trusted Publisher Setup - ao package
+#+DATE: 2026-05-24
+#+AUTHOR: jwalsh
+
+* Overview
+
+Setting up OIDC-based Trusted Publisher for the =ao= npm package, linking
+=github.com/jwalsh/aojs= to =npmjs.com/package/ao= via GitHub Actions.
+
+This eliminates the need for long-lived npm tokens. Publishing is authenticated
+via short-lived OIDC tokens tied to specific repository, workflow, and environment.
+
+* Architecture
+
+#+begin_src mermaid
+flowchart TD
+    A[Developer pushes to main] --> B[GitHub Actions ci.yml]
+    B --> C{Tests pass?}
+    C -->|No| D[Build fails]
+    C -->|Yes| E[Publish job starts]
+    E --> F[Request OIDC token]
+    F --> G[GitHub OIDC Provider]
+    G --> H[npm verifies token claims]
+    H --> I{Claims match Trusted Publisher config?}
+    I -->|No| J[Publish rejected]
+    I -->|Yes| K[npm publish --provenance]
+    K --> L[Package published with provenance attestation]
+#+end_src
+
+* OIDC Token Claims
+
+#+begin_src mermaid
+flowchart LR
+    subgraph "OIDC Token Claims"
+        A[iss: GitHub Actions]
+        B[repository: jwalsh/aojs]
+        C[ref: refs/heads/main]
+        D[workflow: ci.yml]
+        E[environment: npm]
+    end
+    subgraph "npm Trusted Publisher Config"
+        F[org/user: jwalsh]
+        G[repo: aojs]
+        H[workflow: ci.yml]
+        I[environment: npm]
+    end
+    A --> F
+    B --> G
+    D --> H
+    E --> I
+#+end_src
+
+* Full Setup Process (Step by Step)
+
+** Prerequisites
+
+- npm account with 2FA enabled
+- GitHub repository with Actions enabled
+- Package already published at least once (to claim the name)
+
+** Step 1: npm — Configure Trusted Publisher
+
+#+begin_src mermaid
+sequenceDiagram
+    participant User
+    participant NPM as npmjs.com
+
+    User->>NPM: Navigate to package Settings
+    User->>NPM: Trusted Publisher → GitHub Actions
+    User->>NPM: Fill: org=jwalsh, repo=aojs, workflow=ci.yml, env=npm
+    User->>NPM: Select allowed actions: publish, stage publish
+    NPM->>User: Prompt for 2FA OTP
+    User->>NPM: Enter 6-digit authenticator code
+    NPM->>NPM: Save Trusted Publisher connection
+#+end_src
+
+| Field | Value | Notes |
+|-------+-------+-------|
+| Publisher | GitHub Actions | Only option currently |
+| Organization/user | jwalsh | GitHub username or org |
+| Repository | aojs | Repo name (not full URL) |
+| Workflow filename | ci.yml | Must exist in =.github/workflows/= |
+| Environment name | npm | Must match GH environment exactly |
+| Allowed actions | publish, stage publish | At least one required |
+
+** Step 2: npm — Set Publishing Access
+
+| Option | Use Case |
+|--------+----------|
+| Require 2FA or granular token | During testing (allows local =npm publish --otp=) |
+| Require 2FA and disallow tokens | Production (CI-only publishing via OIDC) |
+
+Start with the permissive option. Tighten after verifying OIDC works.
+
+** Step 3: GitHub — Create Environment
+
+1. Repository → Settings → Environments → *New environment*
+2. Name: =npm=
+3. Configure:
+   - Deployment branches → Selected branches → Add =main=
+   - (Optional) Required reviewers for gated releases
+   - (Optional) Wait timer for delay between test and publish
+4. No secrets needed (OIDC replaces tokens)
+
+#+begin_src mermaid
+flowchart TD
+    subgraph "GitHub Environment: npm"
+        A[Branch protection: main only]
+        B[No secrets required]
+        C[Optional: required reviewers]
+        D[Optional: wait timer]
+    end
+    subgraph "Workflow References"
+        E["environment: npm"]
+        F["permissions: id-token: write"]
+    end
+    E --> A
+    F --> B
+#+end_src
+
+** Step 4: GitHub — Configure Workflow
+
+#+begin_src yaml
+# .github/workflows/ci.yml
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+  publish:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: npm                    # <-- ties to GH environment
+    permissions:
+      contents: read
+      id-token: write                   # <-- required for OIDC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish --provenance --access public
+#+end_src
+
+Key points:
+- =environment: npm= — must match the GH environment name AND npm config
+- =id-token: write= — allows the runner to request an OIDC JWT
+- =registry-url= — required by setup-node to configure =.npmrc=
+- =--provenance= — attaches build attestation to the package
+- No =NODE_AUTH_TOKEN= / =NPM_TOKEN= needed
+
+** Step 5: Remove Legacy Secrets
+
+After confirming OIDC publish works:
+1. GitHub → Settings → Secrets → Delete =NPM_TOKEN=
+2. npm → Publishing access → Switch to "Require 2FA and disallow tokens"
+
+* Data Flow: What Happens on Push
+
+#+begin_src mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant GH as GitHub Actions
+    participant OIDC as GitHub OIDC Provider
+    participant NPM as npm Registry
+
+    Dev->>GH: git push origin main
+    GH->>GH: Run tests (Node 18, 20, 22)
+    GH->>GH: All tests pass
+    GH->>GH: Publish job starts (environment: npm)
+    GH->>OIDC: Request id-token (permissions.id-token: write)
+    OIDC-->>GH: JWT signed by GitHub<br/>claims: repo, workflow, environment, ref
+    GH->>GH: npm publish --provenance
+    GH->>NPM: Package tarball + OIDC token + provenance bundle
+    NPM->>NPM: Verify JWT signature (GitHub's JWKS)
+    NPM->>NPM: Match claims against Trusted Publisher config
+    NPM->>NPM: Verify: jwalsh/aojs + ci.yml + npm env
+    NPM-->>GH: 200 OK — published
+    GH-->>Dev: ✓ Workflow succeeded
+    Dev->>Dev: npm view ao version → new version
+#+end_src
+
+* Testing Checklist
+
+| # | Step | Command / Action | Expected |
+|---+------+------------------+----------|
+| 1 | Create GH environment | Settings → Environments → npm | Environment exists |
+| 2 | Restrict to main | Deployment branches → main | Only main can deploy |
+| 3 | Bump version | Edit package.json → 1.0.1 | |
+| 4 | Push | =git push= | CI triggers |
+| 5 | Watch CI | =gh run watch= | Tests pass, publish succeeds |
+| 6 | Verify version | =npm view ao version= | Shows 1.0.1 |
+| 7 | Verify provenance | =npm audit signatures= | Signatures valid |
+| 8 | Local fallback | =npm publish --otp=XXXXXX= | Works (while permissive) |
+| 9 | Tighten access | npm → Disallow tokens | |
+| 10 | Remove secret | GH → Delete NPM_TOKEN | |
+
+* Local Publishing Fallback
+
+During testing, local publishing remains available (requires 2FA):
+
+#+begin_src shell
+# Build first
+npm run build
+
+# Publish with OTP from authenticator app
+npm publish --access public --otp=123456
+#+end_src
+
+This works because publishing access is set to "Require 2FA or granular token".
+Once OIDC is confirmed, switch to strict mode to disable this path.
+
+System used for local publishing:
+#+begin_src shell
+$ uname -a
+FreeBSD nexus 15.0-RELEASE FreeBSD 15.0-RELEASE releng/15.0-n280995-7aedc8de6446 GENERIC amd64
+#+end_src
+
+* Replicating for a New Repository
+
+To set up Trusted Publisher on a new repo/package:
+
+#+begin_src shell
+# 1. Ensure package is published at least once (claims the name)
+npm publish --access public --otp=XXXXXX
+
+# 2. Create the workflow (copy ci.yml pattern above)
+mkdir -p .github/workflows
+# Edit .github/workflows/ci.yml with publish job
+
+# 3. Create GH environment via CLI (requires admin scope)
+gh api repos/OWNER/REPO/environments/npm -X PUT \
+  --input <(echo '{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}')
+
+# 4. Add branch policy
+gh api repos/OWNER/REPO/environments/npm/deployment-branch-policies -X POST \
+  --input <(echo '{"name":"main","type":"branch"}')
+
+# 5. Configure npm Trusted Publisher via web UI
+# npmjs.com → package → Settings → Trusted Publisher → GitHub Actions
+# Fill: org, repo, workflow filename, environment name
+
+# 6. Test: bump version, push, watch CI
+npm version patch
+git push && git push --tags
+gh run watch
+#+end_src
+
+* Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Publish job skipped | Environment doesn't exist | Create =npm= environment on GH |
+| 403 from npm | Claims don't match config | Verify env name, workflow filename match exactly |
+| =id-token= permission denied | Missing permissions block | Add =permissions: id-token: write= to job |
+| Provenance fails | Missing =registry-url= in setup-node | Add =registry-url: 'https://registry.npmjs.org'= |
+| Tests pass but publish fails | Branch not allowed in environment | Add branch to deployment branch policy |
+| Local publish blocked | "Disallow tokens" enabled | Switch to permissive mode or use CI only |
+
+* References
+
+- [[https://docs.npmjs.com/generating-provenance-statements][npm Provenance Statements]]
+- [[https://docs.npmjs.com/adding-a-trusted-publisher-to-a-package][npm Trusted Publishers Documentation]]
+- [[https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-cloud-providers][GitHub OIDC for Cloud Providers]]
+- [[https://docs.github.com/en/actions/deployment/targeting-different-environments/managing-environments-for-deployment][GitHub Environments for Deployment]]
+- [[https://github.blog/changelog/2023-04-19-npm-provenance-public-beta/][GitHub Blog: npm Provenance]]
