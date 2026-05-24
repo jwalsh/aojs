@@ -1,0 +1,11 @@
+src/
+test/
+.github/
+.env
+.env.*
+.env~
+*~
+.babelrc
+eslint.config.js
+build.js
+Makefile
