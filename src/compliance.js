@@ -18,6 +18,7 @@ export const COMPLIANCE_REQUIREMENTS = {
   R10: { id: 'R10', level: 'MUST',   name: 'Schema validation',         description: 'Validate blocklist against JSON Schema, cache 7d' },
   R11: { id: 'R11', level: 'SHOULD', name: 'Persistent caches',         description: 'Persist robots.txt and blocklist caches across runs' },
   R12: { id: 'R12', level: 'MUST',   name: 'Cache-miss behavior',       description: 'Stale-while-revalidate with hard cutoff at 2x TTL' },
+  R13: { id: 'R13', level: 'SHOULD', name: 'Implementation tagging',    description: 'Tag compliance fixture requests with ?impl={org/repo}&sha={sha}&spec={version}' },
 };
 
 // Attestation tiers (from wal.sh/research/bots/index.org)
@@ -77,7 +78,7 @@ export const BOT_COMPLIANCE = {
     //   - Avoid re-fetching unchanged resources (R8)
     //   - Prefer markdown/JSON over HTML (R9)
     //   - Persist caches across runs (R11)
-    compliance: { R1: true, R2: true, R3: true, R4: true, R5: true, R6: true, R7: true, R8: true, R9: true, R10: true, R11: true, R12: true },
+    compliance: { R1: true, R2: true, R3: true, R4: true, R5: true, R6: true, R7: true, R8: true, R9: true, R10: true, R11: true, R12: true, R13: true },
   },
   'GPTBot': {
     category: 'ai_llm',

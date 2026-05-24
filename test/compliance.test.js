@@ -145,7 +145,7 @@ describe('Compliance Module', () => {
       assert.strictEqual(att.data_usage, 'research');
       assert.strictEqual(att.compliant, true);
       assert.strictEqual(att.failures.length, 0);
-      assert.strictEqual(att.claims.length, 12); // all R1-R12 fulfilled
+      assert.strictEqual(att.claims.length, 13); // all R1-R13 fulfilled
       assert.ok(att.opt_out_honored.includes('robots.txt'));
       assert.ok(att.opt_out_honored.includes('blocklist'));
     });
