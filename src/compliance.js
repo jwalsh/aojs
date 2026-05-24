@@ -29,6 +29,26 @@ export const ATTESTATION_TIERS = {
   4: { tier: 4, name: 'Third-party audited', description: 'External verification of compliance claims' },
 };
 
+// Operator opt-out standards (what site operators can use)
+export const OPT_OUT_STANDARDS = {
+  'robots.txt':    { id: 'robots.txt',    spec: 'RFC 9309', adoption: 'universal', description: 'Per-token allow/disallow path rules' },
+  'X-Robots-Tag':  { id: 'X-Robots-Tag',  spec: 'Google extension', adoption: 'search_engines', description: 'HTTP header: noindex, nofollow, nosnippet' },
+  'meta-robots':   { id: 'meta-robots',    spec: 'HTML spec', adoption: 'search_engines', description: 'HTML <meta name="robots"> tag' },
+  'tdmrep':        { id: 'tdmrep',         spec: 'W3C Community Report (2024)', adoption: 'none', description: '/.well-known/tdmrep.json + HTTP headers + ODRL policies' },
+  'ai.txt':        { id: 'ai.txt',         spec: 'Spawning.ai', adoption: 'minimal', description: '/ai.txt with toggle-based permissions per content type' },
+  'blocklist':     { id: 'blocklist',      spec: 'walsh-research-compliance/v1.1', adoption: 'walsh-research', description: 'JSON blocklist with domain+subdomain matching' },
+};
+
+// Training vs RAG token pairs — operators now split by data usage purpose
+export const TOKEN_PAIRS = {
+  'OpenAI':    { training: 'GPTBot',            search: ['ChatGPT-User', 'OAI-SearchBot'] },
+  'Anthropic': { training: 'ClaudeBot',         search: ['Claude-User'] },
+  'Google':    { training: 'Google-Extended',    search: ['Googlebot'] },
+  'Amazon':    { training: 'Amazonbot',         search: ['Amzn-SearchBot', 'Amzn-User'] },
+  'Apple':     { training: 'Applebot-Extended',  search: ['Applebot'] },
+  'Meta':      { training: 'meta-externalagent', search: ['FacebookBot'] },
+};
+
 // Known bot compliance profiles
 // compliance values: true = confirmed, false = confirmed non-compliant, 'partial' = some aspects, 'unknown' = not verified, null = not applicable
 export const BOT_COMPLIANCE = {
@@ -46,8 +66,9 @@ export const BOT_COMPLIANCE = {
   'GPTBot': {
     category: 'ai_llm',
     operator: 'OpenAI',
-    policy_url: 'https://openai.com/gptbot',
+    policy_url: 'https://platform.openai.com/docs/gptbot',
     robots_token: 'GPTBot',
+    related_tokens: ['ChatGPT-User', 'OAI-SearchBot'],
     tier: 2,
     data_usage: 'training',
     opt_out: ['robots.txt'],
@@ -76,10 +97,22 @@ export const BOT_COMPLIANCE = {
   'ClaudeBot': {
     category: 'ai_llm',
     operator: 'Anthropic',
-    policy_url: 'https://www.anthropic.com/research',
+    policy_url: 'https://support.anthropic.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler',
     robots_token: 'ClaudeBot',
+    related_tokens: ['Claude-User'],
     tier: 2,
     data_usage: 'training',
+    opt_out: ['robots.txt'],
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+  },
+  'Claude-User': {
+    category: 'ai_llm',
+    operator: 'Anthropic',
+    policy_url: 'https://support.anthropic.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler',
+    robots_token: 'Claude-User',
+    related_tokens: ['ClaudeBot'],
+    tier: 2,
+    data_usage: 'search',
     opt_out: ['robots.txt'],
     compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
   },
@@ -118,10 +151,24 @@ export const BOT_COMPLIANCE = {
     operator: 'Amazon',
     policy_url: 'https://developer.amazon.com/support/amazonbot',
     robots_token: 'Amazonbot',
+    related_tokens: ['Amzn-SearchBot', 'Amzn-User'],
+    ip_verify_url: 'https://developer.amazon.com/amazonbot/ip-addresses/',
     tier: 2,
     data_usage: 'training',
     opt_out: ['robots.txt'],
     compliance: { R1: true, R2: 'partial', R3: 'unknown', R4: false, R5: 'unknown', R6: 'unknown' },
+  },
+  'Amzn-SearchBot': {
+    category: 'ai_llm',
+    operator: 'Amazon',
+    policy_url: 'https://developer.amazon.com/support/amazonbot',
+    robots_token: 'Amzn-SearchBot',
+    related_tokens: ['Amazonbot', 'Amzn-User'],
+    ip_verify_url: 'https://developer.amazon.com/amazonbot/searchbot-ip-addresses/',
+    tier: 2,
+    data_usage: 'search',
+    opt_out: ['robots.txt'],
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
   },
   'Bytespider': {
     category: 'ai_llm',
