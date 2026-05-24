@@ -23,7 +23,7 @@ A lightweight, modern JavaScript library for detecting mobile devices, bots, bro
 ## Installation
 
 ```bash
-npm install aojs
+npm install ao
 ```
 
 ## Quick Start
@@ -31,7 +31,7 @@ npm install aojs
 ### Basic Usage
 
 ```javascript
-import ao from 'aojs';
+import ao from 'ao';
 
 // Check if user agent is mobile
 const isMobile = ao.isMobile('Mozilla/5.0 (iPhone...)');
@@ -49,7 +49,7 @@ console.log(analysis);
 ### Bot Category Detection
 
 ```javascript
-import ao from 'aojs';
+import ao from 'ao';
 
 // Detect AI/LLM bots
 const gptBot = ao.detectBotCategory('GPTBot/1.0');
@@ -290,7 +290,7 @@ aojs/
 ### Browser Usage
 
 ```javascript
-import ao from 'aojs';
+import ao from 'ao';
 
 // Automatically uses window.navigator.userAgent
 if (ao.isMobile()) {
@@ -310,7 +310,7 @@ console.log(`OS: ${info.os.name} ${info.os.version}`);
 
 ```javascript
 import express from 'express';
-import ao from 'aojs';
+import ao from 'ao';
 
 const app = express();
 

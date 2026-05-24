@@ -73,6 +73,57 @@ check-node:
 	@$(NODE) -v
 	@echo "Required: >=18.0.0"
 
+# Release targets
+.PHONY: release-patch release-minor release-major release-hotfix
+release-patch: test
+	@echo "Releasing patch..."
+	$(NPM) version patch --no-git-tag-version
+	git add package.json
+	git commit -m "chore: bump to $$($(NODE) -p 'require(\"./package.json\").version')"
+	git push
+
+release-minor: test
+	@echo "Releasing minor..."
+	$(NPM) version minor --no-git-tag-version
+	git add package.json
+	git commit -m "feat: bump to $$($(NODE) -p 'require(\"./package.json\").version')"
+	git push
+
+release-major: test
+	@echo "Releasing major..."
+	$(NPM) version major --no-git-tag-version
+	git add package.json
+	git commit -m "feat!: bump to $$($(NODE) -p 'require(\"./package.json\").version')"
+	git push
+
+# Emergency local publish (requires OTP)
+release-hotfix: test
+	@echo "Publishing hotfix locally..."
+	@echo "Run: npm publish --access public --otp=XXXXXX"
+
+# Deprecate a version (usage: make deprecate VERSION=1.1.1 MSG="use 1.1.3")
+.PHONY: deprecate
+deprecate:
+	@test -n "$(VERSION)" || (echo "Usage: make deprecate VERSION=x.y.z MSG='reason'" && exit 1)
+	npm deprecate ao@$(VERSION) "$(MSG)"
+
+# Rollback latest to a specific version
+.PHONY: rollback
+rollback:
+	@test -n "$(VERSION)" || (echo "Usage: make rollback VERSION=x.y.z" && exit 1)
+	npm dist-tag add ao@$(VERSION) latest
+	npm view ao dist-tags
+
+# View current registry state
+.PHONY: registry-status
+registry-status:
+	@echo "=== Dist Tags ==="
+	@npm view ao dist-tags --json
+	@echo "\n=== All Versions ==="
+	@npm view ao versions --json
+	@echo "\n=== Latest ==="
+	@npm view ao version
+
 # Help target
 .PHONY: help
 help:
@@ -88,6 +139,16 @@ help:
 	@echo "  make dev        - Start development mode"
 	@echo "  make check-node - Check Node.js version"
 	@echo "  make help       - Show this help message"
+	@echo ""
+	@echo ""
+	@echo "Release targets:"
+	@echo "  make release-patch   - Bump patch, push (CI publishes)"
+	@echo "  make release-minor   - Bump minor, push (CI publishes)"
+	@echo "  make release-major   - Bump major, push (CI publishes)"
+	@echo "  make release-hotfix  - Build for local emergency publish"
+	@echo "  make deprecate VERSION=x.y.z MSG='reason'"
+	@echo "  make rollback VERSION=x.y.z"
+	@echo "  make registry-status - View npm dist-tags and versions"
 	@echo ""
 	@echo "Common workflows:"
 	@echo "  make            - Clean, install, build, and test"

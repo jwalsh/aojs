@@ -278,6 +278,80 @@ flowchart TD
 | View dist-tags | =npm view ao dist-tags= | No | - |
 | Audit provenance | =npm audit signatures= | No | - |
 
+* Multi-Version Maintenance (Worked Example)
+
+Real example from this repo: supporting 1.1.x security patches while 1.2.x is latest.
+
+** Setup
+
+#+begin_src shell
+# Create maintenance branch from the last commit in that series
+git branch release/1.1 <commit-sha-of-1.1.x>
+git push -u origin release/1.1
+#+end_src
+
+** Publishing a patch to the old series
+
+#+begin_src shell
+git checkout release/1.1
+
+# Bump patch version
+npm version patch --no-git-tag-version  # → 1.1.3
+
+# Build, test, publish under dist-tag
+npm run build && npm test
+npm publish --access public --tag release-1.1 --otp=XXXXXX
+
+# Commit and push the branch
+git add package.json && git commit -m "fix: backport security patch (1.1.3)"
+git push
+#+end_src
+
+** Result
+
+#+begin_src shell
+$ npm view ao dist-tags --json
+{
+  "latest": "1.2.0",
+  "release-1.1": "1.1.3"
+}
+#+end_src
+
+- =npm install ao= → gets 1.2.0 (latest)
+- =npm install ao@release-1.1= → gets 1.1.3 (explicit tag)
+- =npm install ao@"^1.1.0"= → gets 1.1.3 (semver resolves within 1.1.x)
+
+** CI automation for release branches
+
+Add branch pattern to workflow triggers:
+
+#+begin_src yaml
+on:
+  push:
+    branches: [main, 'release/**']
+#+end_src
+
+Conditionally set the dist-tag in the publish step:
+
+#+begin_src yaml
+- run: |
+    if [[ "${{ github.ref }}" == refs/heads/release/* ]]; then
+      TAG="release-${GITHUB_REF#refs/heads/release/}"
+      npm publish --provenance --access public --tag "$TAG"
+    else
+      npm publish --provenance --access public
+    fi
+#+end_src
+
+** When to maintain multiple lines
+
+| Scenario | Action |
+|----------|--------|
+| Security fix needed for old major/minor | Backport to release/X.Y branch |
+| Breaking change in latest | Users on =^old= get patches automatically |
+| LTS support | Maintain release/X.Y for agreed period |
+| All users should upgrade | Deprecate old versions instead |
+
 * Environment Requirements
 
 | Context | Requirements |
