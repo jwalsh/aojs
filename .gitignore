@@ -27,6 +27,10 @@ Thumbs.db
 *.swp
 *.swo
 *~
+\#*\#
+.\#*
+*.elc
+.dir-locals.el
 
 # Test coverage
 coverage/
