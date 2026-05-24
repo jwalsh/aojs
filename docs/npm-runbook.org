@@ -1,0 +1,289 @@
+#+TITLE: npm Package Operations Runbook
+#+DATE: 2026-05-24
+#+AUTHOR: jwalsh
+
+* Overview
+
+Operational runbook for the =ao= npm package covering all scenarios that must
+be supported in the npm ecosystem. Each scenario includes the command sequence,
+prerequisites, and rollback steps.
+
+* Scenarios
+
+** 1. Standard Release (CI/CD)
+
+Normal release flow via GitHub Actions OIDC.
+
+#+begin_src shell
+# 1. Bump version
+npm version patch  # or minor, major
+
+# 2. Push triggers CI
+git push && git push --tags
+
+# 3. Verify
+gh run watch
+npm view ao version
+#+end_src
+
+| Prerequisite | Trusted Publisher configured, npm environment exists |
+| Rollback | Deprecate version, push new patch |
+| Time | ~60s from push to published |
+
+** 2. Emergency Hotfix (Local Publish)
+
+Bypass CI for critical security fixes. Requires npm login + OTP.
+
+#+begin_src shell
+# 1. Bump version
+npm version patch
+
+# 2. Build and test
+npm run build && npm test
+
+# 3. Publish with OTP
+npm publish --access public --otp=XXXXXX
+
+# 4. Commit and push (so CI doesn't conflict)
+git add package.json
+git commit -m "fix: emergency hotfix X.Y.Z"
+git push
+#+end_src
+
+| Prerequisite | =npm login= on machine, 2FA authenticator |
+| Rollback | Deprecate + publish new patch |
+| Time | ~30s (limited by OTP entry) |
+
+** 3. Deprecate a Version
+
+Mark a specific version as deprecated. Users see a warning on install.
+
+#+begin_src shell
+npm deprecate ao@1.1.1 "security: use 1.1.2 instead" --otp=XXXXXX
+#+end_src
+
+| Effect | Warning on =npm install ao@1.1.1=, does NOT remove from registry |
+| Reversible | Yes: =npm deprecate ao@1.1.1 ""= (empty string undoes it) |
+| Requires | OTP |
+
+** 4. Deprecate All Versions (Package Sunset)
+
+Mark entire package as deprecated (e.g., renamed, abandoned).
+
+#+begin_src shell
+npm deprecate ao "this package has been renamed to @jwalsh/ao" --otp=XXXXXX
+#+end_src
+
+| Effect | All versions show warning |
+| Reversible | Yes: =npm deprecate ao ""= |
+
+** 5. Unpublish a Version
+
+Remove a specific version from the registry entirely.
+
+#+begin_src shell
+npm unpublish ao@1.1.1 --otp=XXXXXX
+#+end_src
+
+| Constraint | Only within 72 hours of publish |
+| Constraint | Cannot unpublish if other packages depend on it |
+| Constraint | Cannot re-use the version number for 24 hours |
+| Reversible | NO — version number is burned |
+| When to use | Leaked credentials, accidentally published secrets |
+
+** 6. Unpublish Entire Package
+
+Remove all versions. Nuclear option.
+
+#+begin_src shell
+npm unpublish ao --force --otp=XXXXXX
+#+end_src
+
+| Constraint | Only within 72 hours of publish |
+| Constraint | Package name cannot be reused for 24 hours |
+| Reversible | NO |
+| When to use | Almost never. Prefer deprecation. |
+
+** 7. Rollback to Previous Version (dist-tag)
+
+Point =latest= tag to an older version without unpublishing.
+
+#+begin_src shell
+# Point latest back to 1.1.0
+npm dist-tag add ao@1.1.0 latest --otp=XXXXXX
+
+# Verify
+npm view ao dist-tags
+#+end_src
+
+| Effect | =npm install ao= gets 1.1.0, but 1.1.1 still exists |
+| Reversible | Yes: =npm dist-tag add ao@X.Y.Z latest= |
+| When to use | Bad release, need instant rollback without new version |
+
+** 8. Pre-release / Canary Versions
+
+Publish under a tag so it doesn't become =latest=.
+
+#+begin_src shell
+# Set version
+npm version prerelease --preid=rc  # e.g., 1.2.0-rc.0
+
+# Publish under next tag
+npm publish --access public --tag next --otp=XXXXXX
+
+# Users install explicitly
+npm install ao@next
+#+end_src
+
+| Effect | Does not affect =npm install ao= (stays on latest) |
+| Tags | =next=, =beta=, =canary=, =rc= are common |
+
+** 9. Scoped Package Migration
+
+Move from unscoped to scoped (e.g., =ao= → =@jwalsh/ao=).
+
+#+begin_src shell
+# 1. Update package.json name
+# "name": "@jwalsh/ao"
+
+# 2. Publish scoped package
+npm publish --access public --otp=XXXXXX
+
+# 3. Deprecate old package
+npm deprecate ao "moved to @jwalsh/ao" --otp=XXXXXX
+#+end_src
+
+** 10. Security Incident Response
+
+Compromised credentials, malicious code injected, or supply chain attack.
+
+#+begin_src shell
+# 1. IMMEDIATE: unpublish compromised version (if within 72h)
+npm unpublish ao@COMPROMISED_VERSION --otp=XXXXXX
+
+# 2. If > 72h, deprecate with clear warning
+npm deprecate ao@COMPROMISED_VERSION "SECURITY: compromised, upgrade immediately" --otp=XXXXXX
+
+# 3. Revoke all tokens
+# npmjs.com → Settings → Access Tokens → Revoke All
+
+# 4. Rotate Trusted Publisher
+# Delete and recreate on npmjs.com → Package Settings
+
+# 5. Publish clean version
+npm version patch
+npm publish --access public --otp=XXXXXX
+
+# 6. File security advisory
+# npmjs.com → Package → Report Vulnerability
+# Or: https://github.com/advisories
+#+end_src
+
+** 11. Transfer Package Ownership
+
+Add/remove maintainers or transfer to an org.
+
+#+begin_src shell
+# Add maintainer
+npm owner add <username> ao --otp=XXXXXX
+
+# Remove maintainer
+npm owner rm <username> ao --otp=XXXXXX
+
+# List current owners
+npm owner ls ao
+#+end_src
+
+** 12. Access Token Management
+
+#+begin_src shell
+# List tokens
+npm token list
+
+# Create automation token (for CI without OIDC)
+npm token create --read-only=false --cidr-whitelist=""
+
+# Revoke token
+npm token revoke <token-id>
+
+# Preferred: use OIDC Trusted Publisher (no tokens needed)
+#+end_src
+
+** 13. Registry Lockout Recovery
+
+When you can't publish (lost 2FA, expired tokens, etc.)
+
+| Scenario | Recovery |
+|----------|----------|
+| Lost authenticator | npm support: https://npmjs.com/support |
+| Account compromised | npm support + revoke all tokens |
+| Token expired | =npm login= + new OTP |
+| OIDC failing | Fall back to local publish with token + OTP |
+| Package name squatted | npm support dispute process |
+
+** 14. Version Conflict (CI races)
+
+When CI tries to publish a version that already exists.
+
+#+begin_src shell
+# CI will get: 403 Forbidden - you cannot publish over previously published version
+# This is harmless — the version is already live
+
+# To prevent: add check before publish
+npm view ao@$(node -p "require('./package.json').version") version 2>/dev/null && echo "SKIP" || npm publish
+#+end_src
+
+** 15. Provenance Verification
+
+Verify a package was published from a known source.
+
+#+begin_src shell
+# Check signatures
+npm audit signatures
+
+# View provenance for specific version
+npm view ao@1.1.0 --json | jq '.dist.attestations'
+
+# Sigstore transparency log
+# https://search.sigstore.dev/?hash=<sha256>
+#+end_src
+
+* Decision Matrix
+
+#+begin_src mermaid
+flowchart TD
+    A[Problem detected] --> B{Severity?}
+    B -->|Critical: secrets leaked| C[Unpublish + rotate all creds]
+    B -->|High: broken functionality| D{Within 72h?}
+    B -->|Medium: non-critical bug| E[Publish patch via CI]
+    B -->|Low: cosmetic| F[Fix in next release]
+    D -->|Yes| G[Unpublish + publish fix]
+    D -->|No| H[Deprecate + publish fix]
+    C --> I[File security advisory]
+    G --> J[Rollback dist-tag as interim]
+    H --> J
+#+end_src
+
+* Quick Reference
+
+| Action | Command | OTP? | Reversible? |
+|--------|---------|------|-------------|
+| Publish | =npm publish --access public= | Yes (local) / No (OIDC) | No |
+| Deprecate | =npm deprecate ao@ver "msg"= | Yes | Yes |
+| Undeprecate | =npm deprecate ao@ver ""= | Yes | - |
+| Unpublish version | =npm unpublish ao@ver= | Yes | No (72h window) |
+| Rollback latest | =npm dist-tag add ao@ver latest= | Yes | Yes |
+| Pre-release | =npm publish --tag next= | Yes | - |
+| Add owner | =npm owner add user ao= | Yes | Yes |
+| View dist-tags | =npm view ao dist-tags= | No | - |
+| Audit provenance | =npm audit signatures= | No | - |
+
+* Environment Requirements
+
+| Context | Requirements |
+|---------|-------------|
+| CI (OIDC) | GitHub environment =npm=, workflow =ci.yml=, npm >= 11.5.1 |
+| Local publish | =npm login=, authenticator app for OTP |
+| Deprecation | =npm login=, OTP |
+| Unpublish | =npm login=, OTP, within 72h window |
+| Dist-tag changes | =npm login=, OTP |
