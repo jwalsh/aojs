@@ -1,6 +1,6 @@
 /**
  * ao/compliance - Bot compliance assessment
- * Based on walsh-research-compliance/v1.2
+ * Based on walsh-research-compliance/v1.3
  * Spec: https://wal.sh/research/bots/compliance-spec
  */
 
@@ -37,7 +37,7 @@ export const OPT_OUT_STANDARDS = {
   'meta-robots':   { id: 'meta-robots',    spec: 'HTML spec', adoption: 'search_engines', description: 'HTML <meta name="robots"> tag' },
   'tdmrep':        { id: 'tdmrep',         spec: 'W3C Community Report (2024)', adoption: 'none', description: '/.well-known/tdmrep.json + HTTP headers + ODRL policies' },
   'ai.txt':        { id: 'ai.txt',         spec: 'Spawning.ai', adoption: 'minimal', description: '/ai.txt with toggle-based permissions per content type' },
-  'blocklist':     { id: 'blocklist',      spec: 'walsh-research-compliance/v1.2', adoption: 'walsh-research', description: 'JSON blocklist with domain+subdomain matching' },
+  'blocklist':     { id: 'blocklist',      spec: 'walsh-research-compliance/v1.3', adoption: 'walsh-research', description: 'JSON blocklist with domain+subdomain matching' },
 };
 
 // Training vs RAG token pairs — operators now split by data usage purpose
