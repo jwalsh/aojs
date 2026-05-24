@@ -18,18 +18,24 @@ emergency hotfixes, deprecation, rollback, and multi-version maintenance.
 - **Maintaining multiple release lines** (e.g., 1.1.x and 1.2.x simultaneously)
 - **Security incident response** (credential rotation, advisory filing)
 
-## CI/CD Publish (OIDC Trusted Publisher)
+## CI/CD Publish (Tag-based, OIDC Trusted Publisher)
+
+Publishing is triggered by pushing a `v*` tag, not by every push to main.
+This avoids CI thrashing and double-publishes.
 
 ```bash
-# Bump version
-npm version patch  # or minor, major
+# Bump version + create tag + push (all in one)
+npm version patch -m "chore: release %s"  # or minor, major
+git push && git push --tags
 
-# Push triggers CI → OIDC → publish
-git add package.json && git commit -m "chore: bump to $(node -p 'require(\"./package.json\").version')" && git push
+# Or via Makefile
+make release-patch   # or release-minor, release-major
 
 # Watch
 gh run list --limit 1 --workflow ci.yml
 ```
+
+Pattern used by: chalk, zod, commander, express, inquirer, execa.
 
 Requirements: GitHub environment `npm`, workflow with `id-token: write`, npm >= 11.5.1.
 

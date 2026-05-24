@@ -33,7 +33,7 @@ build:
 
 # Run tests
 .PHONY: test
-test: build
+test: build fixtures
 	@echo "Running tests..."
 	$(NODE) --test $(TEST_DIR)/*.test.js
 
@@ -73,28 +73,22 @@ check-node:
 	@$(NODE) -v
 	@echo "Required: >=18.0.0"
 
-# Release targets
+# Release targets (tag-based: pushing a v* tag triggers CI publish)
 .PHONY: release-patch release-minor release-major release-hotfix
 release-patch: test
 	@echo "Releasing patch..."
-	$(NPM) version patch --no-git-tag-version
-	git add package.json
-	git commit -m "chore: bump to $$($(NODE) -p 'require(\"./package.json\").version')"
-	git push
+	$(NPM) version patch -m "chore: release %s"
+	git push && git push --tags
 
 release-minor: test
 	@echo "Releasing minor..."
-	$(NPM) version minor --no-git-tag-version
-	git add package.json
-	git commit -m "feat: bump to $$($(NODE) -p 'require(\"./package.json\").version')"
-	git push
+	$(NPM) version minor -m "feat: release %s"
+	git push && git push --tags
 
 release-major: test
 	@echo "Releasing major..."
-	$(NPM) version major --no-git-tag-version
-	git add package.json
-	git commit -m "feat!: bump to $$($(NODE) -p 'require(\"./package.json\").version')"
-	git push
+	$(NPM) version major -m "feat!: release %s"
+	git push && git push --tags
 
 # Emergency local publish (requires OTP)
 release-hotfix: test
@@ -124,15 +118,24 @@ registry-status:
 	@echo "\n=== Latest ==="
 	@npm view ao version
 
-# Refresh external test fixtures
+# External test fixtures (file targets — only download when missing)
+test/fixtures/crawler-user-agents.json:
+	@mkdir -p test/fixtures
+	curl -sL https://raw.githubusercontent.com/monperrus/crawler-user-agents/master/crawler-user-agents.json -o $@
+
+test/fixtures/ai-robots-txt.json:
+	@mkdir -p test/fixtures
+	curl -sL https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.json -o $@
+
 .PHONY: fixtures
-fixtures:
-	@echo "Downloading external UA datasets..."
-	curl -sL https://raw.githubusercontent.com/monperrus/crawler-user-agents/master/crawler-user-agents.json \
-		-o test/fixtures/crawler-user-agents.json
-	curl -sL https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.json \
-		-o test/fixtures/ai-robots-txt.json
-	@echo "✓ Fixtures updated"
+fixtures: test/fixtures/crawler-user-agents.json test/fixtures/ai-robots-txt.json
+	@echo "✓ Fixtures up to date"
+
+# Force re-download
+.PHONY: fixtures-refresh
+fixtures-refresh:
+	rm -f test/fixtures/crawler-user-agents.json test/fixtures/ai-robots-txt.json
+	$(MAKE) fixtures
 
 # Help target
 .PHONY: help
