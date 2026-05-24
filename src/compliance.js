@@ -58,9 +58,25 @@ export const BOT_COMPLIANCE = {
     policy_url: 'https://wal.sh/bot/',
     spec_url: 'https://wal.sh/research/bots/compliance-spec',
     robots_token: 'Walsh-Research',
+    ua_format: 'Walsh-Research/1.0 (+https://wal.sh/bot/)',
     tier: 3,
     data_usage: 'research',
     opt_out: ['robots.txt', 'blocklist'],
+    // Tier 3 obligations: published spec, test fixtures, self-audit
+    // The bot MUST:
+    //   - Identify with full UA including contact URL (R1)
+    //   - Parse and enforce robots.txt per RFC 9309 (R2)
+    //   - Check operator blocklist before every crawl (R3)
+    //   - Rate-limit to >= 1s between requests per host (R4)
+    //   - Exponential backoff on errors, honor Retry-After (R5)
+    //   - Only fetch explicitly configured URLs (R6)
+    //   - Validate blocklist against JSON Schema (R10)
+    //   - Stale-while-revalidate, hard cutoff at 2x TTL (R12)
+    // The bot SHOULD:
+    //   - Use conditional fetch (If-Modified-Since/ETag) (R7)
+    //   - Avoid re-fetching unchanged resources (R8)
+    //   - Prefer markdown/JSON over HTML (R9)
+    //   - Persist caches across runs (R11)
     compliance: { R1: true, R2: true, R3: true, R4: true, R5: true, R6: true, R7: true, R8: true, R9: true, R10: true, R11: true, R12: true },
   },
   'GPTBot': {
@@ -296,4 +312,72 @@ export const isCompliant = (userAgent, requirement) => {
   const profile = assessCompliance(userAgent);
   if (!profile) return null;
   return profile.compliance[requirement] ?? null;
+};
+
+/**
+ * Generate an attestation statement for a bot — what it claims and what it owes.
+ * Used when dogfooding to clearly state the responsibilities of the agent.
+ * @param {string} userAgent
+ * @returns {Object|null} { identity, claims, obligations, opt_out_honored, tier_description }
+ */
+export const getAttestation = (userAgent) => {
+  const profile = assessCompliance(userAgent);
+  if (!profile) {
+    return {
+      identity: userAgent || 'unknown',
+      claims: [],
+      obligations: ['MUST identify with a proper User-Agent string (R1)'],
+      opt_out_honored: [],
+      tier_description: ATTESTATION_TIERS[0].description,
+      compliant: false,
+    };
+  }
+
+  const mustReqs = Object.entries(COMPLIANCE_REQUIREMENTS)
+    .filter(([, r]) => r.level === 'MUST');
+  const shouldReqs = Object.entries(COMPLIANCE_REQUIREMENTS)
+    .filter(([, r]) => r.level === 'SHOULD');
+
+  const claims = [];
+  const obligations = [];
+  const failures = [];
+
+  for (const [id, req] of mustReqs) {
+    const status = profile.compliance[id];
+    if (status === true) {
+      claims.push(`${id}: ${req.name} — fulfilled`);
+    } else if (status === false) {
+      failures.push(`${id}: ${req.name} — NOT MET`);
+      obligations.push(`MUST: ${req.description} (${id})`);
+    } else if (status === 'partial') {
+      failures.push(`${id}: ${req.name} — partial`);
+      obligations.push(`MUST (partial): ${req.description} (${id})`);
+    } else {
+      obligations.push(`MUST (unverified): ${req.description} (${id})`);
+    }
+  }
+
+  for (const [id, req] of shouldReqs) {
+    const status = profile.compliance[id];
+    if (status === true) {
+      claims.push(`${id}: ${req.name} — fulfilled`);
+    } else if (status !== null) {
+      obligations.push(`SHOULD: ${req.description} (${id})`);
+    }
+  }
+
+  return {
+    identity: `${profile.name} (${profile.operator})`,
+    ua_format: profile.ua_format || `${profile.robots_token}/*`,
+    policy_url: profile.policy_url,
+    spec_url: profile.spec_url || null,
+    tier: profile.tier,
+    tier_description: ATTESTATION_TIERS[profile.tier]?.description || 'Unknown',
+    data_usage: profile.data_usage,
+    claims,
+    obligations,
+    failures,
+    opt_out_honored: profile.opt_out || [],
+    compliant: failures.length === 0,
+  };
 };
