@@ -6,7 +6,7 @@
   "author": "jwalsh",
   "repository": {
     "type": "git",
-    "url": "git://github.com/jwalsh/aojs.git"
+    "url": "https://github.com/jwalsh/aojs.git"
   },
   "bugs": {
     "url": "https://github.com/jwalsh/aojs/issues"
