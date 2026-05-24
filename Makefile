@@ -124,6 +124,16 @@ registry-status:
 	@echo "\n=== Latest ==="
 	@npm view ao version
 
+# Refresh external test fixtures
+.PHONY: fixtures
+fixtures:
+	@echo "Downloading external UA datasets..."
+	curl -sL https://raw.githubusercontent.com/monperrus/crawler-user-agents/master/crawler-user-agents.json \
+		-o test/fixtures/crawler-user-agents.json
+	curl -sL https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/main/robots.json \
+		-o test/fixtures/ai-robots-txt.json
+	@echo "✓ Fixtures updated"
+
 # Help target
 .PHONY: help
 help:
