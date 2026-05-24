@@ -1,7 +1,7 @@
 {
   "name": "ao",
   "description": "User-agent detection, bot classification, and compliance assessment",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "homepage": "https://github.com/jwalsh/aojs",
   "author": "jwalsh",
   "repository": {
