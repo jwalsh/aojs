@@ -40,3 +40,13 @@ coverage/
 # yarn.lock
 # pnpm-lock.yaml
 .envrc
+
+# Temporary files and test artifacts
+tmp/
+/tmp/
+
+# Access log artifacts (from local testing/dogfooding)
+logs/
+*.access.log
+*.access.log.*
+access.log*
