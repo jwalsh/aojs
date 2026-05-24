@@ -1,0 +1,418 @@
+#+TITLE: ao Eventing & Analytics Control Surface — Specification
+#+DATE: 2026-05-24
+#+AUTHOR: jwalsh
+#+STATUS: DRAFT
+
+* Overview
+
+An event-driven framework for tracking, reporting, and analyzing bot behavior
+on sites using the =ao= library. Provides server-side classification hooks,
+client-side behavioral verification (for JS-capable agents), and an analytics
+pipeline for secondary analysis.
+
+* Architecture
+
+#+begin_src mermaid
+flowchart TD
+    subgraph "Server Side (middleware)"
+        A[HTTP Request] --> B[ao.classify(ua)]
+        B --> C{Bot detected?}
+        C -->|Yes| D[Emit bot:detected event]
+        C -->|No| E[Emit visitor:human event]
+        D --> F[Generate anonymous session ID]
+        F --> G[Fire callbacks / hooks]
+        G --> H[Log to metrics sink]
+    end
+
+    subgraph "Client Side (verification pixel)"
+        I[Page loads ao.js] --> J[Beacon: page_view]
+        J --> K{JS executes?}
+        K -->|Yes| L[Monitor behavior signals]
+        L --> M[scroll, mouse, focus, time-on-page]
+        M --> N[Beacon: behavior_proof]
+        K -->|No| O[No beacon = crawler confirmed]
+    end
+
+    subgraph "Analytics Pipeline"
+        H --> P[Time-series DB / OTLP]
+        N --> P
+        P --> Q[Dashboard]
+        P --> R[Secondary analysis]
+        R --> S[Compliance drift detection]
+    end
+#+end_src
+
+* Core API: Event Emitter
+
+** Server-side events
+
+#+begin_src javascript
+import ao from 'ao';
+import { createTracker } from 'ao/tracker';
+
+const tracker = createTracker({
+  // Anonymous session ID: hash(IP + UA + date) — no PII stored
+  sessionId: (req) => hash(req.ip + req.headers['user-agent'] + dateKey()),
+
+  // Where to send events
+  sink: 'otlp',  // or 'callback', 'console', 'webhook'
+
+  // OTLP endpoint (reuse existing telemetry infra)
+  otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+});
+
+// Event types
+tracker.on('bot:detected', (event) => {
+  // event: { sessionId, ua, category, tier, compliance, timestamp }
+});
+
+tracker.on('bot:ai_llm', (event) => {
+  // Specific category handler
+  // event: { sessionId, ua, name, operator, data_usage, tier, attestation }
+});
+
+tracker.on('bot:non_compliant', (event) => {
+  // Fires when a bot fails compliance checks
+  // event: { sessionId, ua, name, failures: ['R1', 'R4'] }
+});
+
+tracker.on('visitor:human', (event) => {
+  // event: { sessionId, verified: false }
+  // verified becomes true when client-side beacon confirms
+});
+
+tracker.on('visitor:verified', (event) => {
+  // Client-side beacon confirmed human behavior
+  // event: { sessionId, signals: ['scroll', 'mouse', 'focus'] }
+});
+#+end_src
+
+** Express middleware integration
+
+#+begin_src javascript
+import express from 'express';
+import { aoMiddleware } from 'ao/middleware';
+
+const app = express();
+
+app.use(aoMiddleware({
+  tracker,
+  // Inline callbacks for common actions
+  onAiBot: (req, res, attestation) => {
+    if (attestation.data_usage === 'training' && !attestation.compliant) {
+      res.status(403).end();
+      return false; // stop processing
+    }
+    res.setHeader('X-Robots-Tag', 'noai');
+  },
+  // Attach classification to request for downstream use
+  attachTo: 'req.ao',
+}));
+
+// Downstream: req.ao.isBot, req.ao.category, req.ao.attestation
+#+end_src
+
+* Anonymous Session Tracking
+
+** Session ID generation
+
+No PII stored. Session ID is a one-way hash that allows correlating
+server-side and client-side events for the same visit.
+
+#+begin_src javascript
+import { createHash } from 'crypto';
+
+function generateSessionId(ip, userAgent, date) {
+  const daily = date.toISOString().slice(0, 10); // rotate daily
+  return createHash('sha256')
+    .update(`${ip}:${userAgent}:${daily}`)
+    .digest('hex')
+    .slice(0, 16); // 16-char hex = 64 bits entropy
+}
+#+end_src
+
+** Properties
+
+- Deterministic: same visitor → same ID within a day
+- Non-reversible: cannot recover IP or UA from hash
+- Rotates daily: no long-term tracking
+- Correlates server + client events for same request
+
+* Client-Side Verification Pixel
+
+For sites that want to distinguish humans from JS-capable agents.
+
+** Embed snippet
+
+#+begin_src html
+<!-- ao verification beacon (self-hosted, no third-party) -->
+<script src="/ao.js" data-endpoint="/ao/beacon" async defer></script>
+#+end_src
+
+** Beacon behavior (ao.js — ~1KB)
+
+#+begin_src javascript
+(function() {
+  const endpoint = document.currentScript.dataset.endpoint || '/ao/beacon';
+  const sid = document.cookie.match(/ao_sid=([^;]+)/)?.[1] || '';
+
+  // Phase 1: page_view (fires immediately)
+  beacon({ type: 'page_view', sid });
+
+  // Phase 2: behavior signals (fires after interaction)
+  const signals = new Set();
+  const handlers = {
+    scroll: () => signals.add('scroll'),
+    mousemove: () => signals.add('mouse'),
+    touchstart: () => signals.add('touch'),
+    focus: () => signals.add('focus'),
+    keydown: () => signals.add('keyboard'),
+  };
+
+  for (const [event, handler] of Object.entries(handlers)) {
+    document.addEventListener(event, handler, { once: true, passive: true });
+  }
+
+  // Phase 3: behavior_proof (fires on unload or after 5s of interaction)
+  let proofSent = false;
+  function sendProof() {
+    if (proofSent || signals.size === 0) return;
+    proofSent = true;
+    beacon({
+      type: 'behavior_proof',
+      sid,
+      signals: [...signals],
+      timeOnPage: Math.round(performance.now() / 1000),
+    });
+  }
+
+  setTimeout(() => { if (signals.size > 0) sendProof(); }, 5000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') sendProof();
+  });
+
+  function beacon(data) {
+    const url = `${endpoint}?${new URLSearchParams(data)}`;
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(url);
+    } else {
+      new Image().src = url;
+    }
+  }
+})();
+#+end_src
+
+** What this proves
+
+| Signal | Human | JS Agent (Claude-User, ChatGPT-User) | Crawler (GPTBot, ClaudeBot) |
+|--------|-------|--------------------------------------|----------------------------|
+| =page_view= beacon fires | yes | yes (if JS enabled) | no |
+| =scroll= | yes | unlikely | no |
+| =mouse/touch= | yes | no | no |
+| =focus= | yes | no | no |
+| =timeOnPage > 5s= | yes | possible | no |
+| =behavior_proof= with 3+ signals | yes | no | no |
+
+* Metrics & Reporting
+
+** Counters (exported via OTLP or Prometheus)
+
+#+begin_src text
+ao_requests_total{category="ai_llm",name="GPTBot",tier="2"} 142
+ao_requests_total{category="search_engines",name="Googlebot",tier="2"} 891
+ao_requests_total{category="human",verified="true"} 4521
+ao_requests_total{category="human",verified="false"} 230
+
+ao_compliance_failures_total{name="Amazonbot",requirement="R4"} 37
+ao_compliance_failures_total{name="Bytespider",requirement="R1"} 12
+
+ao_bot_tier_distribution{tier="0"} 45
+ao_bot_tier_distribution{tier="1"} 89
+ao_bot_tier_distribution{tier="2"} 312
+ao_bot_tier_distribution{tier="3"} 23
+#+end_src
+
+** Histograms
+
+#+begin_src text
+ao_request_interval_seconds{name="GPTBot"}     — time between requests from same bot
+ao_time_on_page_seconds{category="human"}      — from behavior_proof beacon
+ao_pages_per_session{category="ai_llm"}        — requests per session ID per day
+#+end_src
+
+** Labels
+
+All metrics carry these labels:
+- =category= — ai_llm, search_engines, monitoring, human, etc.
+- =name= — specific bot name (GPTBot, ClaudeBot, etc.) or "unknown"
+- =tier= — attestation tier 0-4
+- =data_usage= — training, search, research, unknown
+- =compliant= — true/false
+
+* Callback / Webhook Interface
+
+For sites that want real-time notifications:
+
+#+begin_src javascript
+const tracker = createTracker({
+  callbacks: {
+    // Webhook: POST JSON to URL
+    webhook: {
+      url: 'https://hooks.example.com/ao',
+      events: ['bot:non_compliant', 'bot:ai_llm'],
+      batch: true,       // batch events every 60s
+      batchInterval: 60000,
+    },
+
+    // Custom function
+    handler: (event) => {
+      if (event.type === 'bot:non_compliant') {
+        alertOps(event);
+      }
+    },
+  },
+});
+#+end_src
+
+** Webhook payload format
+
+#+begin_src json
+{
+  "events": [
+    {
+      "type": "bot:ai_llm",
+      "timestamp": "2026-05-24T16:45:00Z",
+      "sessionId": "a1b2c3d4e5f6g7h8",
+      "ua": "GPTBot/1.4 (+https://openai.com/gptbot)",
+      "classification": {
+        "name": "GPTBot",
+        "operator": "OpenAI",
+        "category": "ai_llm",
+        "tier": 2,
+        "data_usage": "training",
+        "compliant": true,
+        "policy_url": "https://openai.com/gptbot"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/research/paper.html",
+        "status": 200
+      }
+    }
+  ],
+  "site": "wal.sh",
+  "period": { "start": "2026-05-24T16:44:00Z", "end": "2026-05-24T16:45:00Z" }
+}
+#+end_src
+
+* Secondary Analysis Pipeline
+
+For batch processing of access logs and long-term trend analysis:
+
+#+begin_src javascript
+import { createAnalyzer } from 'ao/analyzer';
+
+const analyzer = createAnalyzer({
+  // Input: access log file or stream
+  input: '/var/log/nginx/access.log',
+
+  // Output: structured analysis
+  output: {
+    format: 'jsonl',     // or 'csv', 'otlp'
+    path: './analysis/',
+  },
+
+  // Enrichment: cross-reference with compliance DB
+  enrich: true,
+
+  // Time windows for rate analysis
+  windows: ['1m', '5m', '1h', '1d'],
+});
+
+const report = await analyzer.run();
+// {
+//   summary: { total, humans, bots, ai_bots, compliant, non_compliant },
+//   by_bot: [ { name, requests, avg_interval, paths_hit, compliance } ],
+//   rate_violations: [ { name, window, requests_per_second, limit: 1 } ],
+//   compliance_drift: [ { name, requirement, was: true, now: 'partial' } ],
+// }
+#+end_src
+
+** Compliance drift detection
+
+Compare current bot behavior against claimed compliance:
+
+#+begin_src mermaid
+flowchart LR
+    A[Access logs] --> B[Parse + classify]
+    B --> C[Measure request intervals]
+    C --> D{interval < 1s?}
+    D -->|Yes| E[R4 violation detected]
+    D -->|No| F[R4 compliant]
+    E --> G[Update compliance matrix]
+    G --> H[Alert: compliance drift]
+#+end_src
+
+* GTM Integration (optional)
+
+For sites already using Google Tag Manager:
+
+#+begin_src html
+<!-- GTM custom HTML tag (fires on all pages) -->
+<script>
+  // Push ao classification to dataLayer
+  var ua = navigator.userAgent;
+  // Server sets this via response header or inline
+  var aoData = window.__ao || {};
+  if (aoData.isBot) {
+    dataLayer.push({
+      event: 'ao_bot_detected',
+      ao_category: aoData.category,
+      ao_name: aoData.name,
+      ao_tier: aoData.tier,
+      ao_data_usage: aoData.data_usage,
+    });
+  }
+</script>
+#+end_src
+
+Note: GTM only fires for JS-capable visitors. Traditional crawlers won't
+trigger GTM tags. This is useful for detecting:
+- Browser automation (Puppeteer, Playwright)
+- JS-rendering crawlers (Googlebot renderer, prerender.io)
+- AI agents that browse with full browser (Claude-User via claude-code)
+
+* Privacy & Legal Considerations
+
+| Concern | Mitigation |
+|---------|-----------|
+| IP addresses are PII | Never store raw IP — only hash(IP+UA+date) |
+| GDPR tracking consent | No cookies for bots, no cross-site tracking |
+| Session correlation | Daily rotation, 16-char truncated hash |
+| Data retention | Metrics aggregated, raw events TTL 7 days |
+| First-party only | Beacon hits same origin, no third-party pixels |
+| Bot consent | Bots have no GDPR rights — track freely |
+| Human misclassification | If behavior_proof fires, don't track as bot |
+
+* Module Exports (proposed)
+
+#+begin_src text
+ao                     — Core classification (existing)
+ao/compliance          — Compliance assessment (existing)
+ao/log-analyzer        — Log file processing (existing)
+ao/tracker             — Event emitter + session tracking (NEW)
+ao/middleware          — Express/Koa/Hono middleware (NEW)
+ao/beacon              — Client-side verification script (NEW)
+ao/analyzer            — Batch analysis pipeline (NEW)
+#+end_src
+
+* Implementation Priority
+
+| Phase | Module | Effort | Value |
+|-------|--------|--------|-------|
+| v1.3 | =ao/tracker= — event emitter + anonymous sessions | Medium | High |
+| v1.3 | =ao/middleware= — Express integration | Low | High |
+| v1.4 | =ao/beacon= — client-side verification | Low | Medium |
+| v1.4 | =ao/analyzer= — batch pipeline with drift detection | Medium | High |
+| v2.0 | GTM integration | Low | Low |
+| v2.0 | Webhook batching + delivery guarantees | Medium | Medium |
