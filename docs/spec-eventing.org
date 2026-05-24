@@ -204,14 +204,31 @@ For sites that want to distinguish humans from JS-capable agents.
 
 ** What this proves
 
-| Signal | Human | JS Agent (Claude-User, ChatGPT-User) | Crawler (GPTBot, ClaudeBot) |
-|--------|-------|--------------------------------------|----------------------------|
-| =page_view= beacon fires | yes | yes (if JS enabled) | no |
-| =scroll= | yes | unlikely | no |
-| =mouse/touch= | yes | no | no |
-| =focus= | yes | no | no |
-| =timeOnPage > 5s= | yes | possible | no |
-| =behavior_proof= with 3+ signals | yes | no | no |
+Important: Many AI bots (Amazonbot, OAI-SearchBot, GPTBot, ClaudeBot, Googlebot)
+now *fetch* JS files referenced in HTML. This does NOT mean they *execute* them.
+The beacon tests execution + outbound network capability, not just resource loading.
+
+Evidence from wal.sh logs: Amazonbot (Chrome/119 headless), OAI-SearchBot (Chrome/131),
+GPTBot, and ClaudeBot all fetch =/static/js/*.js= files. Whether they execute is
+unconfirmed — the beacon will answer this definitively.
+
+| Signal | Human | Rendering Bot | Fetching Bot | HTML-Only Crawler |
+|--------|-------|---------------|--------------|-------------------|
+| Fetches HTML | yes | yes | yes | yes |
+| Fetches JS/CSS files | yes | yes | yes | no |
+| =page_view= beacon fires | yes | yes | no | no |
+| =scroll= | yes | no | no | no |
+| =mouse/touch= | yes | no | no | no |
+| =behavior_proof= (3+ signals) | yes | no | no | no |
+
+The four tiers of client behavior:
+1. *Human* — beacon + behavioral proof (scroll, mouse, focus)
+2. *Rendering agent* — beacon fires, no behavioral signals (Googlebot WRS, possibly Amazonbot)
+3. *Fetching agent* — downloads JS but beacon never fires (GPTBot, ClaudeBot likely)
+4. *HTML-only crawler* — no sub-resource fetches (old SEO bots, Sogou)
+
+This makes the beacon a *differentiator*: agents that truly render (and interact
+with SPAs) vs. those that just vacuum up resources for indexing/training.
 
 * Metrics & Reporting
 
