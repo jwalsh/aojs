@@ -18,7 +18,7 @@ export const COMPLIANCE_REQUIREMENTS = {
   R10: { id: 'R10', level: 'MUST',   name: 'Schema validation',         description: 'Validate blocklist against JSON Schema, cache 7d' },
   R11: { id: 'R11', level: 'SHOULD', name: 'Persistent caches',         description: 'Persist robots.txt and blocklist caches across runs' },
   R12: { id: 'R12', level: 'MUST',   name: 'Cache-miss behavior',       description: 'Stale-while-revalidate with hard cutoff at 2x TTL' },
-  R13: { id: 'R13', level: 'SHOULD', name: 'Implementation tagging',    description: 'Tag compliance fixture requests with ?impl={org/repo}&sha={sha}&spec={version}' },
+  R13: { id: 'R13', level: 'SHOULD', name: 'Implementation tagging',    description: 'Tag compliance fixture requests with ?impl={org/repo}&sha={sha}&spec={version}' }
 };
 
 // Attestation tiers (from wal.sh/research/bots/index.org)
@@ -27,7 +27,7 @@ export const ATTESTATION_TIERS = {
   1: { tier: 1, name: 'UA assertion only',  description: 'Identifies via UA string, no policy page' },
   2: { tier: 2, name: 'UA + policy URL',    description: 'UA string with +URL pointing to policy page' },
   3: { tier: 3, name: 'Verifiable contract', description: 'Published spec, test fixtures, self-audit' },
-  4: { tier: 4, name: 'Third-party audited', description: 'External verification of compliance claims' },
+  4: { tier: 4, name: 'Third-party audited', description: 'External verification of compliance claims' }
 };
 
 // Operator opt-out standards (what site operators can use)
@@ -37,7 +37,7 @@ export const OPT_OUT_STANDARDS = {
   'meta-robots':   { id: 'meta-robots',    spec: 'HTML spec', adoption: 'search_engines', description: 'HTML <meta name="robots"> tag' },
   'tdmrep':        { id: 'tdmrep',         spec: 'W3C Community Report (2024)', adoption: 'none', description: '/.well-known/tdmrep.json + HTTP headers + ODRL policies' },
   'ai.txt':        { id: 'ai.txt',         spec: 'Spawning.ai', adoption: 'minimal', description: '/ai.txt with toggle-based permissions per content type' },
-  'blocklist':     { id: 'blocklist',      spec: 'walsh-research-compliance/v1.3', adoption: 'walsh-research', description: 'JSON blocklist with domain+subdomain matching' },
+  'blocklist':     { id: 'blocklist',      spec: 'walsh-research-compliance/v1.3', adoption: 'walsh-research', description: 'JSON blocklist with domain+subdomain matching' }
 };
 
 // Training vs RAG token pairs — operators now split by data usage purpose
@@ -47,7 +47,7 @@ export const TOKEN_PAIRS = {
   'Google':    { training: 'Google-Extended',    search: ['Googlebot'] },
   'Amazon':    { training: 'Amazonbot',         search: ['Amzn-SearchBot', 'Amzn-User'] },
   'Apple':     { training: 'Applebot-Extended',  search: ['Applebot'] },
-  'Meta':      { training: 'meta-externalagent', search: ['FacebookBot'] },
+  'Meta':      { training: 'meta-externalagent', search: ['FacebookBot'] }
 };
 
 // Known bot compliance profiles
@@ -78,7 +78,7 @@ export const BOT_COMPLIANCE = {
     //   - Avoid re-fetching unchanged resources (R8)
     //   - Prefer markdown/JSON over HTML (R9)
     //   - Persist caches across runs (R11)
-    compliance: { R1: true, R2: true, R3: true, R4: true, R5: true, R6: true, R7: true, R8: true, R9: true, R10: true, R11: true, R12: true, R13: true },
+    compliance: { R1: true, R2: true, R3: true, R4: true, R5: true, R6: true, R7: true, R8: true, R9: true, R10: true, R11: true, R12: true, R13: true }
   },
   'GPTBot': {
     category: 'ai_llm',
@@ -89,7 +89,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'training',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'ChatGPT-User': {
     category: 'ai_llm',
@@ -99,7 +99,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'OAI-SearchBot': {
     category: 'ai_llm',
@@ -109,7 +109,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'ClaudeBot': {
     category: 'ai_llm',
@@ -120,7 +120,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'training',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'Claude-User': {
     category: 'ai_llm',
@@ -131,7 +131,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'Googlebot': {
     category: 'search_engines',
@@ -141,7 +141,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search_index',
     opt_out: ['robots.txt', 'X-Robots-Tag', 'meta-robots'],
-    compliance: { R1: true, R2: true, R3: null, R4: true, R5: true, R6: true },
+    compliance: { R1: true, R2: true, R3: null, R4: true, R5: true, R6: true }
   },
   'Google-Extended': {
     category: 'ai_llm',
@@ -151,7 +151,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'training',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: true, R3: null, R4: true, R5: true, R6: true },
+    compliance: { R1: true, R2: true, R3: null, R4: true, R5: true, R6: true }
   },
   'bingbot': {
     category: 'search_engines',
@@ -161,7 +161,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search_index',
     opt_out: ['robots.txt', 'X-Robots-Tag'],
-    compliance: { R1: true, R2: true, R3: null, R4: true, R5: true, R6: true },
+    compliance: { R1: true, R2: true, R3: null, R4: true, R5: true, R6: true }
   },
   'Amazonbot': {
     category: 'ai_llm',
@@ -173,7 +173,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'training',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: 'partial', R3: 'unknown', R4: false, R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: 'partial', R3: 'unknown', R4: false, R5: 'unknown', R6: 'unknown' }
   },
   'Amzn-SearchBot': {
     category: 'ai_llm',
@@ -185,7 +185,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'Bytespider': {
     category: 'ai_llm',
@@ -195,7 +195,7 @@ export const BOT_COMPLIANCE = {
     tier: 1,
     data_usage: 'training',
     opt_out: ['robots.txt'],
-    compliance: { R1: 'partial', R2: 'partial', R3: 'unknown', R4: false, R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: 'partial', R2: 'partial', R3: 'unknown', R4: false, R5: 'unknown', R6: 'unknown' }
   },
   'Meta-ExternalAgent': {
     category: 'ai_llm',
@@ -205,7 +205,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'training',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'Applebot': {
     category: 'search_engines',
@@ -215,7 +215,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search_index',
     opt_out: ['robots.txt', 'X-Robots-Tag'],
-    compliance: { R1: true, R2: true, R3: null, R4: true, R5: 'unknown', R6: true },
+    compliance: { R1: true, R2: true, R3: null, R4: true, R5: 'unknown', R6: true }
   },
   'DataForSeoBot': {
     category: 'seo_marketing',
@@ -225,7 +225,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'seo_analysis',
     opt_out: ['robots.txt', 'email'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'SemrushBot': {
     category: 'seo_marketing',
@@ -235,7 +235,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'seo_analysis',
     opt_out: ['robots.txt', 'email'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: true, R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: true, R5: 'unknown', R6: 'unknown' }
   },
   'AhrefsBot': {
     category: 'seo_marketing',
@@ -245,7 +245,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'seo_analysis',
     opt_out: ['robots.txt', 'web_form'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: true, R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: true, R5: 'unknown', R6: 'unknown' }
   },
   'MJ12bot': {
     category: 'seo_marketing',
@@ -255,7 +255,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'seo_analysis',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   // Bots observed in wal.sh access logs with policy URLs
   'PerplexityBot': {
@@ -266,7 +266,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: 'unknown', R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: 'unknown', R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'LinkupBot': {
     category: 'ai_llm',
@@ -277,7 +277,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: 'unknown', R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: 'unknown', R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'PetalBot': {
     category: 'search_engines',
@@ -287,7 +287,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search_index',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'DuckAssistBot': {
     category: 'ai_llm',
@@ -297,7 +297,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: 'unknown', R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: 'unknown', R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'Qwantbot': {
     category: 'search_engines',
@@ -307,7 +307,7 @@ export const BOT_COMPLIANCE = {
     tier: 2,
     data_usage: 'search_index',
     opt_out: ['robots.txt'],
-    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: true, R2: true, R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'newsai': {
     category: 'ai_llm',
@@ -317,7 +317,7 @@ export const BOT_COMPLIANCE = {
     tier: 0,
     data_usage: 'unknown',
     opt_out: [],
-    compliance: { R1: false, R2: 'unknown', R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
+    compliance: { R1: false, R2: 'unknown', R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
   },
   'LinerBot': {
     category: 'ai_llm',
@@ -327,15 +327,15 @@ export const BOT_COMPLIANCE = {
     tier: 1,
     data_usage: 'unknown',
     opt_out: [],
-    compliance: { R1: 'partial', R2: 'unknown', R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' },
-  },
+    compliance: { R1: 'partial', R2: 'unknown', R3: 'unknown', R4: 'unknown', R5: 'unknown', R6: 'unknown' }
+  }
 };
 
 // Extract the robots_token from a User-Agent string
 const KNOWN_TOKENS = Object.entries(BOT_COMPLIANCE).map(([name, profile]) => ({
   name,
   token: profile.robots_token,
-  pattern: new RegExp(profile.robots_token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+  pattern: new RegExp(profile.robots_token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
 }));
 
 /**
@@ -371,7 +371,7 @@ export const getAttestationTier = (userAgent) => {
 export const getComplianceMatrix = () => {
   return Object.entries(BOT_COMPLIANCE).map(([name, profile]) => ({
     name,
-    ...profile,
+    ...profile
   }));
 };
 
@@ -402,7 +402,7 @@ export const getAttestation = (userAgent) => {
       obligations: ['MUST identify with a proper User-Agent string (R1)'],
       opt_out_honored: [],
       tier_description: ATTESTATION_TIERS[0].description,
-      compliant: false,
+      compliant: false
     };
   }
 
@@ -451,6 +451,6 @@ export const getAttestation = (userAgent) => {
     obligations,
     failures,
     opt_out_honored: profile.opt_out || [],
-    compliant: failures.length === 0,
+    compliant: failures.length === 0
   };
 };

@@ -1,13 +1,16 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import ao from '../dist/index.js';
-import { assessCompliance, getAttestation, BOT_COMPLIANCE } from '../dist/compliance.js';
+import { assessCompliance } from '../dist/compliance.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Load external datasets
-const crawlerUAs = JSON.parse(readFileSync(resolve(import.meta.dirname, 'fixtures/crawler-user-agents.json'), 'utf8'));
-const aiRobotsTxt = JSON.parse(readFileSync(resolve(import.meta.dirname, 'fixtures/ai-robots-txt.json'), 'utf8'));
+const crawlerUAs = JSON.parse(readFileSync(resolve(__dirname, 'fixtures/crawler-user-agents.json'), 'utf8'));
+const aiRobotsTxt = JSON.parse(readFileSync(resolve(__dirname, 'fixtures/ai-robots-txt.json'), 'utf8'));
 
 describe('External Fixtures: monperrus/crawler-user-agents (647 crawlers, 1244 UAs)', () => {
   const allInstances = crawlerUAs
@@ -25,7 +28,7 @@ describe('External Fixtures: monperrus/crawler-user-agents (647 crawlers, 1244 U
       try {
         const result = ao.analyze(ua);
         assert.ok(result);
-      } catch (e) {
+      } catch {
         errors++;
       }
     }
@@ -78,7 +81,7 @@ describe('External Fixtures: monperrus/crawler-user-agents (647 crawlers, 1244 U
 
   test('dataset URLs cross-reference our policy_url data', () => {
     let matches = 0;
-    let mismatches = [];
+    // track mismatches for debugging
 
     for (const entry of crawlerUAs) {
       if (!entry.instances || !entry.url) continue;
@@ -177,7 +180,7 @@ describe('External Fixtures: ai-robots-txt/ai.robots.txt (150 AI bots)', () => {
     }
 
     console.log(`  Missing profiles: ${missing.length}/${aiTokens.length}`);
-    console.log(`  Priority additions (with operators):`);
+    console.log('  Priority additions (with operators):');
     missing.slice(0, 15).forEach(m =>
       console.log(`    ${m.token} — ${m.operator} — ${m.function?.substring(0, 50)}`)
     );

@@ -1,12 +1,15 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import ao from '../dist/index.js';
 import { assessCompliance, getAttestation, getAttestationTier } from '../dist/compliance.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 // Load real user agents from wal.sh access logs
-const fixturesPath = resolve(import.meta.dirname, 'fixtures/real-user-agents.txt');
+const fixturesPath = resolve(__dirname, 'fixtures/real-user-agents.txt');
 const realUserAgents = readFileSync(fixturesPath, 'utf-8')
   .split('\n')
   .filter(line => line.trim().length > 0);

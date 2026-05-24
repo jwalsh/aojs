@@ -149,28 +149,28 @@ export function generateReport(analysis) {
 
 ## Top User Agents
 ${Object.entries(analysis.topUserAgents)
-  .map(([ua, count]) => `- ${count}x: ${ua}`)
-  .join('\n')}
+    .map(([ua, count]) => `- ${count}x: ${ua}`)
+    .join('\n')}
 
 ## Browser Distribution
 ${Object.entries(analysis.browsers)
-  .sort(([,a], [,b]) => b - a)
-  .slice(0, 10)
-  .map(([browser, count]) => `- ${browser}: ${count}`)
-  .join('\n')}
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 10)
+    .map(([browser, count]) => `- ${browser}: ${count}`)
+    .join('\n')}
 
 ## Bot Categories
 ${Object.entries(analysis.botCategories)
-  .sort(([,a], [,b]) => b - a)
-  .map(([category, count]) => `- ${category.replace('_', ' ')}: ${count}`)
-  .join('\n')}
+    .sort(([,a], [,b]) => b - a)
+    .map(([category, count]) => `- ${category.replace('_', ' ')}: ${count}`)
+    .join('\n')}
 
 ## Operating System Distribution
 ${Object.entries(analysis.operatingSystems)
-  .sort(([,a], [,b]) => b - a)
-  .slice(0, 10)
-  .map(([os, count]) => `- ${os}: ${count}`)
-  .join('\n')}
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 10)
+    .map(([os, count]) => `- ${os}: ${count}`)
+    .join('\n')}
 `;
 
   return report.trim();

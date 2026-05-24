@@ -241,7 +241,7 @@ describe('Compliance Module', () => {
     test('all profiles have consistent structure', () => {
       const matrix = getComplianceMatrix();
       for (const profile of matrix) {
-        assert.ok(profile.name, `profile missing name`);
+        assert.ok(profile.name, 'profile missing name');
         assert.ok(profile.category, `${profile.name} missing category`);
         assert.ok(typeof profile.tier === 'number', `${profile.name} tier must be number`);
         assert.ok(profile.tier >= 0 && profile.tier <= 4, `${profile.name} tier must be 0-4`);
@@ -265,7 +265,7 @@ describe('Compliance Module', () => {
         'GPTBot': 'GPTBot',
         'ClaudeBot': 'ClaudeBot',
         'Google-Extended': 'Google-Extended',
-        'Amazonbot': 'Amazonbot',
+        'Amazonbot': 'Amazonbot'
       };
       for (const [token, profileName] of Object.entries(knownMappings)) {
         const profile = BOT_COMPLIANCE[profileName];
