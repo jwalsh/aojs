@@ -1,0 +1,129 @@
+#+TITLE: ao — Library Boundaries and Mandate
+#+DATE: 2026-05-24
+#+AUTHOR: jwalsh
+
+* Mandate
+
+=ao= is a *classification engine* for user agents. It answers:
+
+1. *What is this?* — bot category, operator, browser, device
+2. *What does it claim?* — attestation tier, policy URL, spec URL
+3. *What does it owe?* — compliance requirements R1-R13, obligations
+
+That's it. Everything else is the consumer's responsibility.
+
+* What ao IS
+
+- Pure classification functions (zero side effects)
+- Compliance assessment against a published spec
+- Attestation tier assignment
+- Training vs. search token mapping
+- Log parsing (input only, read-only analysis)
+- A data structure library (profiles, requirements, tiers)
+
+* What ao is NOT
+
+| Temptation | Why not | Who owns it |
+|------------|---------|-------------|
+| Tracking/analytics | Side effects, privacy scope | Consumer |
+| Pixel/beacon firing | Network I/O, deployment-specific | Consumer |
+| Cookie management | Stateful, GDPR surface area | Consumer |
+| Middleware (Express, Koa, etc.) | Framework coupling | Consumer wraps ao |
+| Dashboard / reporting UI | Frontend, deployment-specific | Consumer |
+| Webhook delivery | Network I/O, retry logic, state | Consumer |
+| Rate limiting / blocking | Enforcement policy varies | Consumer |
+| robots.txt serving | Static file, trivial for consumer | Consumer |
+| Session storage | Stateful, persistence choice | Consumer |
+| Outbound network requests | No phone-home, no telemetry | Nobody |
+
+* The Consumer Contract
+
+ao exposes pure functions. Consumers compose them into whatever system they need:
+
+#+begin_src text
+┌─────────────────────────────────────────┐
+│         Consumer (e.g., wal.sh)         │
+│                                         │
+│  middleware → ao.classify(ua)           │
+│            → ao.getAttestation(ua)      │
+│            → decision (block/allow/log) │
+│            → beacon/pixel/webhook/etc.  │
+└─────────────────────────────────────────┘
+        │ calls                  │ data flows back
+        ▼                        ▼
+┌─────────────────┐    ┌────────────────────┐
+│      ao         │    │  test/fixtures/    │
+│                 │    │  (real-world UAs    │
+│  classify()     │    │   from wal.sh logs  │
+│  assess()       │    │   feed back into    │
+│  getAttestation │    │   better profiles)  │
+│  parseLogLine() │    │                    │
+└─────────────────┘    └────────────────────┘
+#+end_src
+
+* Data Flow (not control flow)
+
+#+begin_src text
+wal.sh access logs → test/fixtures/ → better classification
+                                        ↓
+                                    ao library
+                                        ↓
+                             any consumer anywhere
+#+end_src
+
+ao doesn't know who uses it. wal.sh happens to be the testbed that provides
+real-world data for improving accuracy. The relationship is:
+- wal.sh → ao (data: UA strings for fixtures)
+- ao → anyone (library: classification functions)
+
+* Client-Side Hook Convention
+
+If a consumer wants client-side integration, ao documents a *convention*
+but does not ship implementation:
+
+#+begin_src javascript
+// Convention: pre-init array queue (GTM/Segment pattern)
+// Consumer places this BEFORE their tracking script loads
+window._ao = window._ao || [];
+
+// Consumer registers callbacks
+_ao.push(['on', 'classify', function(event) {
+  // event: { category, name, tier, data_usage, compliant }
+  // Consumer decides what to do: send beacon, push to dataLayer, etc.
+}]);
+#+end_src
+
+ao documents this pattern. ao does NOT ship =ao.js= for browsers.
+The consumer builds their own client-side script using ao's classification
+output from the server (passed via response header, inline JSON, or API).
+
+* Decision Framework: "Should ao do X?"
+
+Ask these questions:
+
+1. *Is it a pure function of the UA string?* → Yes, ao does it
+2. *Does it require network I/O?* → No, consumer does it
+3. *Does it require state/storage?* → No, consumer does it
+4. *Does it couple to a framework?* → No, consumer wraps ao
+5. *Does it require deployment decisions?* → No, consumer decides
+6. *Does it improve classification accuracy?* → Yes, add to ao (data/logic)
+
+* What CAN be added to ao (future)
+
+- More bot profiles (always)
+- Better heuristics for unknown UAs
+- .well-known/ai-policy.json schema definition
+- TDMRep/ai.txt parsing (it's just parsing, no I/O)
+- Compliance requirement updates (R14, R15, etc.)
+- TypeScript types / JSDoc improvements
+- Additional attestation evidence (spec cross-referencing)
+
+* What MUST NOT be added to ao
+
+- Any =fetch()= / =http.get()= calls
+- Any =fs.writeFile()= (read-only is fine for log analysis)
+- Any =setTimeout= / =setInterval= (no scheduling)
+- Any global state mutation
+- Any framework-specific code (Express, Koa, Hono, etc.)
+- Any browser-specific code (DOM, window, document)
+- Any dependency on external services
