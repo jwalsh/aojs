@@ -1,0 +1,210 @@
+#+TITLE: ao - Architecture and Future Work
+#+DATE: 2026-05-24
+#+AUTHOR: jwalsh
+
+* Architecture Overview
+
+#+begin_src mermaid
+flowchart TD
+    subgraph "Input Sources"
+        A[HTTP User-Agent header]
+        B[Access log files]
+        C[Real-time request stream]
+    end
+
+    subgraph "ao Library"
+        D[UA Parser<br/>index.js]
+        E[Compliance Engine<br/>compliance.js]
+        F[Log Analyzer<br/>log-analyzer.js]
+    end
+
+    subgraph "Compliance Data"
+        G[BOT_COMPLIANCE<br/>Known profiles]
+        H[COMPLIANCE_REQUIREMENTS<br/>R1-R13]
+        I[ATTESTATION_TIERS<br/>0-4]
+        J[TOKEN_PAIRS<br/>Training vs Search]
+        K[OPT_OUT_STANDARDS<br/>robots.txt, ai.txt, etc.]
+    end
+
+    subgraph "Outputs"
+        L[Bot classification]
+        M[Attestation report]
+        N[Compliance matrix]
+        O[Traffic analysis]
+    end
+
+    A --> D
+    A --> E
+    B --> F
+    C --> D
+
+    D --> L
+    E --> M
+    E --> N
+    F --> O
+
+    G --> E
+    H --> E
+    I --> E
+    J --> E
+    K --> E
+#+end_src
+
+* Module Responsibilities
+
+** =ao= (index.js) — User-Agent Classification
+
+- Parse UA strings into device type, browser, OS
+- Classify bots into 9 categories
+- Lightweight, zero-dependency pattern matching
+- No network calls, pure computation
+
+** =ao/compliance= (compliance.js) — Bot Obligation Assessment
+
+The core module. Answers: "what does this bot claim, and what does it owe?"
+
+- Map UA → known bot profile (operator, policy URL, tier)
+- Assess compliance against R1-R13 requirements
+- Generate attestation statements (claims + obligations)
+- Expose training vs. search token pairs for robots.txt decisions
+- Document opt-out standards available to site operators
+
+** =ao/log-analyzer= (log-analyzer.js) — Access Log Processing
+
+- Parse Apache/Nginx combined log format
+- Aggregate bot traffic by category
+- Feed into compliance assessment for bulk analysis
+
+* Data Flow: Site Operator Use Case
+
+#+begin_src mermaid
+sequenceDiagram
+    participant Bot as AI Crawler
+    participant Site as Site (Express middleware)
+    participant AO as ao library
+    participant Policy as /.well-known/ & robots.txt
+
+    Bot->>Site: GET /content (User-Agent: GPTBot/1.4; +https://openai.com/gptbot)
+    Site->>AO: detectBotCategory(ua)
+    AO-->>Site: { isBot: true, category: 'ai_llm' }
+    Site->>AO: getAttestation(ua)
+    AO-->>Site: { tier: 2, data_usage: 'training', obligations: [...] }
+    Site->>Site: Decision: block training, allow search?
+    alt Training bot blocked
+        Site-->>Bot: 403 + X-Robots-Tag: noai
+    else Search bot allowed
+        Site-->>Bot: 200 + content
+    end
+#+end_src
+
+* External Data Sources for UA Verification
+
+| Source | URL | Use |
+|--------|-----|-----|
+| user-agents.net | user-agents.net/bots | Curated bot UA database |
+| crawler-user-agents (GitHub) | github.com/monperrus/crawler-user-agents | JSON list, updated monthly |
+| Dark Visitors | darkvisitors.com/agents | AI bot catalog with policy links |
+| WhatIsMyBrowser | developers.whatismybrowser.com | Commercial UA parsing |
+| robots.txt patterns | robotstxt.org | Canonical token definitions |
+| Real traffic (wal.sh) | local access logs | Ground truth from production |
+
+* Compliance Verification Gaps
+
+Current state: we classify bots and *state* their compliance level, but most
+assessments are based on published claims, not verification. The gap:
+
+| What we know | How we know it | Confidence |
+|--------------|----------------|------------|
+| UA identification (R1) | Observed in logs | High |
+| robots.txt compliance (R2) | Operator claims | Medium |
+| Rate limiting (R4) | Log analysis possible | Verifiable |
+| Policy URL exists | HTTP fetch | Verifiable |
+| Training vs search split | Published docs | Medium |
+| Blocklist honoring (R3) | Need test infrastructure | Low |
+| Backoff behavior (R5) | Need test infrastructure | Low |
+
+* Future Work
+
+** v1.3 — Verification Infrastructure
+
+- [ ] Fetch and validate policy URLs (confirm they resolve)
+- [ ] Parse =robots.txt= to verify token claims match actual rules
+- [ ] Rate-limit detection from access logs (R4 verification)
+- [ ] Add =facebookexternalhit= (link previews), =Twitterbot=, =LinkedInBot= profiles
+- [ ] Add =Sogou=, =YandexBot=, =SeznamBot= profiles from observed traffic
+
+** v1.4 — .well-known Discovery
+
+#+begin_src mermaid
+flowchart LR
+    A[Bot visits site] --> B[Fetch /.well-known/ai-policy.json]
+    B --> C{Exists?}
+    C -->|Yes| D[Parse policy document]
+    C -->|No| E[Fall back to robots.txt]
+    D --> F[Match bot token against rules]
+    F --> G[Allow / Block / Rate-limit]
+#+end_src
+
+- [ ] Define =/.well-known/ai-policy.json= schema
+- [ ] Support versioned compliance specs: =spec_version: "walsh-research-compliance/v1.3"=
+- [ ] Implement =tdmrep= (.well-known/tdmrep.json) parser (W3C Community Report)
+- [ ] Parse =ai.txt= (Spawning.ai format)
+- [ ] Merge signals: robots.txt + ai.txt + tdmrep + ai-policy.json → unified decision
+- [ ] Publish spec as JSON Schema for bot implementors to validate against
+
+** v2.0 — Active Compliance Testing
+
+- [ ] Test harness: deploy honeypot endpoints that track bot behavior
+- [ ] Measure actual request intervals (verify R4 claims)
+- [ ] Set Retry-After headers, verify bots honor them (R5)
+- [ ] Deploy blocklist, verify bots respect it (R3)
+- [ ] Conditional fetch test: serve ETag/Last-Modified, check If-None-Match (R7)
+- [ ] Automated tier promotion: bots pass tests → tier upgrade
+- [ ] Third-party audit protocol for tier 4 attestation
+- [ ] Social scraper profiles: what data they extract, where it goes, retention policies
+
+** v2.1 — Supply Chain & Provenance
+
+- [ ] Track which bots feed which models (GPTBot → GPT-4, ClaudeBot → Claude)
+- [ ] Data lineage: content fetched → model trained → output generated
+- [ ] Operator notification: "your content was used by X model on Y date"
+- [ ] Integration with SLSA/Sigstore for bot identity verification (beyond UA claims)
+
+* Social Platform Scrapers — Risk Assessment
+
+These crawlers scrape content for preview/training and may store data indefinitely:
+
+| Bot | Operator | Purpose | Data Retention | Concern |
+|-----|----------|---------|---------------|---------|
+| meta-externalagent | Meta | AI training | Indefinite | Training without consent |
+| facebookexternalhit | Meta | Link previews | Cached | Low risk (preview only) |
+| Twitterbot | X/Twitter | Card previews | Cached | Low risk (preview only) |
+| LinkedInBot | LinkedIn | Link previews | Cached | Low risk |
+| WhatsApp | Meta | Link previews | Cached | Low risk |
+| PinterestBot | Pinterest | Image indexing | Indefinite | Image harvesting |
+| Bytespider | ByteDance/TikTok | AI training | Indefinite | Aggressive, poor R1 |
+| newsai | Unknown | Unknown | Unknown | No identification, no policy |
+
+Key concern: **training crawlers** (meta-externalagent, Bytespider) differ from
+**preview crawlers** (facebookexternalhit) — site operators should block the former
+while allowing the latter for normal social sharing to work.
+
+The TOKEN_PAIRS mapping makes this distinction actionable:
+#+begin_src text
+User-agent: meta-externalagent   # Block training
+Disallow: /
+
+User-agent: facebookexternalhit  # Allow previews
+Allow: /
+#+end_src
+
+* Test Strategy
+
+| Layer | What | How |
+|-------|------|-----|
+| Unit | Each bot profile resolves correctly | node:test assertions |
+| Integration | Real UAs from access logs parse correctly | Fixture file from wal.sh |
+| Data integrity | All profiles have required fields | Schema validation tests |
+| Compliance logic | Tier 3 bots meet all MUST requirements | Constraint tests |
+| Regression | New bots don't break existing classification | Full suite on CI |
+| External validation | Cross-reference crawler-user-agents DB | Periodic sync |
